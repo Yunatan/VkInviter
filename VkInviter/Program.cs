@@ -13,6 +13,7 @@ namespace VkInviter
         private static VkApi vkApi;
         private static string groupIdToInviteFrom;
         private static long groupIdToInveiteTo;
+        private static int membersOffset;
 
         private static void Main(string[] args)
         {
@@ -20,13 +21,14 @@ namespace VkInviter
 
             vkParams = ParseParams(args, vkParams);
 
+            vkApi.RequestsPerSecond = 3;
             vkApi.Authorize(vkParams);
 
             var groupMembersList = GetMembersToInvite();
 
             Console.WriteLine("Total people to try to invite: " + groupMembersList.Count);
 
-            for (var i = 0; i < groupMembersList.Count; i++)
+            for (var i = membersOffset; i < groupMembersList.Count; i++)
             {
                 var response = TryToInvite(groupMembersList[i]);
                 Console.WriteLine("{0}) id{1} – {2}", i + 1, groupMembersList[i].Id, response);
@@ -45,7 +47,8 @@ namespace VkInviter
                 {"p=|vkPassword=", "vkApi User Password", x => vkParams.Password = x},
                 {"to=|inviteTo=", "Group ID To Invite To", x => groupIdToInveiteTo = long.Parse(x)},
                 {"from=|inviteFrom=", "Group ID To Invite From", x => groupIdToInviteFrom = x},
-                {"ag=|antiGateId=", "AntiGate Id", x => vkApi = new VkApi(new AntiGateCaptchaResolver(x))}
+                {"ag=|antiGateId=", "AntiGate Id", x => vkApi = new VkApi(new AntiGateCaptchaResolver(x))},
+                {"of:|offset:", "Ofsset to start iteration of group members", x => membersOffset = int.Parse(x)}
             };
             options.Parse(args);
             return vkParams;
