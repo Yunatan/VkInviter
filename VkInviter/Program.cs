@@ -17,29 +17,27 @@ namespace VkInviter
 
         private static void Main(string[] args)
         {
-            var vkParams = new ApiAuthParams {Settings = Settings.Groups};
-
-            vkParams = ParseParams(args, vkParams);
-
-            vkApi.RequestsPerSecond = 3;
-            vkApi.Authorize(vkParams);
+            SetupApiWrapper(args);
 
             var groupMembersList = GetMembersToInvite();
 
             Console.WriteLine("Total people to try to invite: " + groupMembersList.Count);
 
-            for (var i = membersOffset; i < groupMembersList.Count; i++)
-            {
-                var response = TryToInvite(groupMembersList[i]);
-                Console.WriteLine("{0}) id{1} – {2}", i + 1, groupMembersList[i].Id, response);
-            }
+            SendInvites(groupMembersList);
 
             Console.WriteLine("Inviting process finished.");
-            Console.ReadKey();
         }
 
-        private static ApiAuthParams ParseParams(string[] args, ApiAuthParams vkParams)
+        private static void SetupApiWrapper(string[] args)
         {
+            var vkParams = ParseParams(args);
+            vkApi.RequestsPerSecond = 3;
+            vkApi.Authorize(vkParams);
+        }
+
+        private static ApiAuthParams ParseParams(string[] args)
+        {
+            var vkParams = new ApiAuthParams {Settings = Settings.Groups};
             var options = new OptionSet
             {
                 {"id=|vkAppId=", "vkApi Application ID", x => vkParams.ApplicationId = ulong.Parse(x)},
@@ -54,34 +52,48 @@ namespace VkInviter
             return vkParams;
         }
 
-        private static string TryToInvite(User groupMember)
-        {
-            bool success;
-            try
-            {
-                success = vkApi.Groups.Invite(groupIdToInveiteTo, groupMember.Id);
-            }
-            catch (VkNet.Exception.AccessDeniedException e)
-            {
-                return e.Message.Replace("Access denied: ", string.Empty);
-            }
-            return success ? "successfully invited!" : "unknown error :(";
-        }
-
         private static List<User> GetMembersToInvite()
         {
+            var membersCount = GetGroupMembersCount();
+
+            var iterations = membersCount / 1000 + (membersCount % 1000 == 0 ? 0 : 1);
+
             var members = new List<User>();
-            int membersCount;
-            vkApi.Groups.GetMembers(out membersCount, new GroupsGetMembersParams { Count = 0, GroupId = groupIdToInviteFrom }); // get to know number of members
-
-            var iterations = membersCount/1000 + (membersCount%1000 == 0 ? 0 : 1);
-
             for (var i = 0; i < iterations; i++)
             {
                 members.AddRange(vkApi.Groups.GetMembers(new GroupsGetMembersParams { GroupId = groupIdToInviteFrom, Offset = i * 1000 }));
             }
 
             return members;
+        }
+
+        private static int GetGroupMembersCount()
+        {
+            int membersCount;
+            vkApi.Groups.GetMembers(out membersCount, new GroupsGetMembersParams { Count = 0, GroupId = groupIdToInviteFrom }); 
+            return membersCount;
+        }
+
+        private static void SendInvites(IList<User> groupMembersList)
+        {
+            for (var i = membersOffset; i < groupMembersList.Count; i++)
+            {
+                var response = TryToInvite(groupMembersList[i]);
+                Console.WriteLine("{0}) id{1} – {2}", i + 1, groupMembersList[i].Id, response);
+            }
+        }
+
+        private static string TryToInvite(User groupMember)
+        {
+            try
+            {
+                vkApi.Groups.Invite(groupIdToInveiteTo, groupMember.Id);
+            }
+            catch (VkNet.Exception.AccessDeniedException e)
+            {
+                return e.Message.Replace("Access denied: ", string.Empty);
+            }
+            return "successfully invited!";
         }
     }
 }

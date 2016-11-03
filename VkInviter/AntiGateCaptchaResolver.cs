@@ -17,20 +17,15 @@ namespace VkInviter
         public string Solve(string url)
         {
             Console.WriteLine("Wait a second, resolving captcha...");
-            var image = GetImageByUrl(url);
             string answer = null;
 
             try
             {
-                answer = anticapApi.GetAnswer(image);
+                answer = anticapApi.GetAnswer(GetImageByUrl(url));
             }
             catch (AntigateErrorException aee)
             {
                 Console.WriteLine("Antigate error: {0}", aee.Message);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error: {0}", e.Message);
             }
 
             Console.WriteLine("Captcha resolved.");
